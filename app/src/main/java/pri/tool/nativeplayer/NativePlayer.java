@@ -98,5 +98,5 @@ public class NativePlayer implements SurfaceHolder.Callback {
 
     private native void nativeStart();
 
-    private native void nativeSetSurface(Surface surface);
+    private native void nativeSetSurface(Object surface);
 }

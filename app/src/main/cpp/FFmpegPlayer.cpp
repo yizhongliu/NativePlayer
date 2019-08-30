@@ -158,7 +158,8 @@ void FFmpegPlayer::_start() {
             if (videoChannel && packet->stream_index == videoChannel->id) {
                 videoChannel->packets.push(packet);
             } else if (audioChannel && packet->stream_index == audioChannel->id) {
-                audioChannel->packets.push(packet);
+              //  audioChannel->packets.push(packet);
+              av_packet_free(&packet);
             }
         } else if (ret == AVERROR_EOF) {
 

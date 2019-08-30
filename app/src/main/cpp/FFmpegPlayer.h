@@ -10,6 +10,7 @@
 #include "AudioChannel.h"
 #include "VideoChannel.h"
 #include "macro.h"
+#include <pthread.h>
 
 extern "C" {
 #include <libavformat/avformat.h>
