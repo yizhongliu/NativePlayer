@@ -3,12 +3,17 @@
 #include <android/native_window_jni.h>
 #include <android/log.h>
 #include "FFmpegPlayer.h"
+#include "net/NetTimeProvider.h"
+#include "net/NetTimeClient.h"
 
 static JavaVM *java_vm;
 JavaCallHelper *javaCallHelper = 0;
 FFmpegPlayer *ffmpeg = 0;
 ANativeWindow *window = 0;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;//静态初始化mutex
+
+NetTimeProvider *netTimeProvider = 0;
+NetTimeClient *netTimeClient = 0;
 
 
 //1，data;2，linesize；3，width; 4， height
@@ -53,7 +58,6 @@ native_prepare (
     ffmpeg->prepare();
 
     env->ReleaseStringUTFChars(path, dataSource);
-
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -84,11 +88,97 @@ native_set_surface (
 
 }
 
+extern "C" JNIEXPORT void JNICALL
+native_stop (JNIEnv *env,
+             jobject /* this */) {
+    if (ffmpeg) {
+        ffmpeg->stop();
+    }
+}
+
+extern "C" JNIEXPORT void JNICALL
+native_release (JNIEnv *env,
+             jobject /* this */) {
+    pthread_mutex_lock(&mutex);
+    if (window) {
+        //把老的释放
+        ANativeWindow_release(window);
+        window = 0;
+    }
+    pthread_mutex_unlock(&mutex);
+    DELETE(ffmpeg);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+native_getDuration (JNIEnv *env,
+                jobject /* this */) {
+    jint ret = 0;
+    if (ffmpeg) {
+        ret = ffmpeg->getDuration();
+    }
+    return ret;
+}
+
+extern "C" JNIEXPORT void JNICALL
+native_start_net_time_provider (JNIEnv *env,
+                    jobject /* this */,
+                    jstring ip,
+                    jint port) {
+    const char *ip_addr = env->GetStringUTFChars(ip, 0);
+
+    netTimeProvider = new NetTimeProvider(const_cast<char *>(ip_addr), port);
+    netTimeProvider->start();
+
+    env->ReleaseStringUTFChars(ip, ip_addr);
+}
+
+extern "C" JNIEXPORT void JNICALL
+native_stop_net_time_provider (JNIEnv *env,
+                                jobject /* this */) {
+
+    if (netTimeProvider) {
+        netTimeProvider->stop();
+        delete netTimeProvider;
+        netTimeProvider = 0;
+    }
+}
+
+extern "C" JNIEXPORT void JNICALL
+native_start_net_time_client (JNIEnv *env,
+                                jobject /* this */,
+                                jstring ip,
+                                jint port) {
+    const char *ip_addr = env->GetStringUTFChars(ip, 0);
+
+    netTimeClient = new NetTimeClient(const_cast<char *>(ip_addr), port);
+    netTimeClient->start();
+
+    env->ReleaseStringUTFChars(ip, ip_addr);
+}
+
+extern "C" JNIEXPORT void JNICALL
+native_stop_net_time_client (JNIEnv *env,
+                               jobject /* this */) {
+
+    if (netTimeClient) {
+        netTimeClient->stop();
+        delete netTimeClient;
+        netTimeClient = 0;
+    }
+}
+
 /* List of implemented native methods */
 static JNINativeMethod native_methods[] = {
         {"nativePrepare", "(Ljava/lang/String;)V", (void *) native_prepare},
         {"nativeStart", "()V", (void *) native_start},
-        {"nativeSetSurface", "(Ljava/lang/Object;)V", (void *) native_set_surface}
+        {"nativeSetSurface", "(Ljava/lang/Object;)V", (void *) native_set_surface},
+        {"nativeStop", "()V", (void *) native_stop},
+        {"nativeRelease", "()V", (void *) native_release},
+        {"nativeGetDuration", "()I", (void *) native_getDuration},
+        {"nativeStartNetTimeProvider", "(Ljava/lang/String;I)V", (void *) native_start_net_time_provider},
+        {"nativeStopNetTimeProvider", "()V", (void *) native_stop_net_time_provider},
+        {"nativeStartNetTimeClient", "(Ljava/lang/String;I)V", (void *) native_start_net_time_client},
+        {"nativeStopNetTimeClient", "()V", (void *) native_stop_net_time_client}
 };
 
 

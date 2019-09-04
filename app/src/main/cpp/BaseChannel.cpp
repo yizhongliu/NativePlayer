@@ -4,7 +4,10 @@
 
 #include "BaseChannel.h"
 
-BaseChannel::BaseChannel(int id, AVCodecContext *codecContext) : id(id), codecContext(codecContext) {
+BaseChannel::BaseChannel(int id, AVCodecContext *codecContext, AVRational time_base, JavaCallHelper *javaCallHelper) : id(id),
+                                                                                                                       codecContext(codecContext),
+                                                                                                                       time_base(time_base),
+                                                                                                                       javaCallHelper(javaCallHelper) {
     packets.setReleaseCallback(releaseAVPacket);
     frames.setReleaseCallback(releaseAVFrame);
 }

@@ -13,10 +13,11 @@ extern "C" {
 };
 
 #include "safe_queue.h"
+#include "JavaCallHelper.h"
 
 class BaseChannel {
 public:
-    BaseChannel(int id, AVCodecContext *codecContext);
+    BaseChannel(int id, AVCodecContext *codecContext, AVRational time_base, JavaCallHelper *javaCallHelper);
     virtual ~BaseChannel() {
         packets.clear();
         frames.clear();
@@ -55,7 +56,11 @@ public:
     SafeQueue<AVPacket *> packets;
     SafeQueue<AVFrame *> frames;
 
-    int isPlaying;
+    AVRational time_base;
+    double audio_time;
+
+    bool isPlaying = false;
+    JavaCallHelper *javaCallHelper = 0;
 };
 
 

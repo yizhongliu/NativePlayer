@@ -29,13 +29,19 @@ public:
 
     void _start();
 
+    void stop();
+
+    void _stop();
+
     void setRenderCallback(RenderCallback renderCallback);
+
+    int getDuration() const;
 
 private:
     JavaCallHelper *javaCallHelper = 0;  // 回调java
 
-    AudioChannel *audioChannel;
-    VideoChannel *videoChannel;
+    AudioChannel *audioChannel = 0;
+    VideoChannel *videoChannel = 0;
 
     char *dataSource; //媒体文件路径
 
@@ -43,11 +49,15 @@ private:
 
     pthread_t pid_start; //start线程id
 
+    pthread_t pid_stop;
+
     AVFormatContext *formatContext = 0;
 
     int isPlaying = 0;
 
     RenderCallback renderCallback;
+
+    int duration;
 };
 
 #endif //NATIVEPLAYER_FFMPEGPLAYER_H

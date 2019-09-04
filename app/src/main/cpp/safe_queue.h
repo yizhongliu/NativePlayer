@@ -13,6 +13,7 @@ using namespace std;
 template <typename T>
 class SafeQueue {
     typedef void (*ReleaseCallback) (T *);
+    typedef void (*SyncHandle)(queue<T> &);
 
 public:
     SafeQueue() {
@@ -99,6 +100,22 @@ public:
         this->releaseCallback = releaseCallback;
     }
 
+    void setSyncHandle(SyncHandle syncHandle) {
+        this->syncHandle = syncHandle;
+    }
+
+    /**
+ * 同步操作
+ */
+    void sync(){
+
+        pthread_mutex_lock(&mutex);
+
+        syncHandle(q);
+
+        pthread_mutex_unlock(&mutex);
+    }
+
 private:
     queue<T> q;
     pthread_mutex_t mutex;
@@ -106,6 +123,8 @@ private:
 
     int work;
     ReleaseCallback releaseCallback;
+
+    SyncHandle syncHandle;
 };
 
 #endif //NATIVEPLAYER_SAFE_QUEUE_H

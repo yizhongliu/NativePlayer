@@ -24,11 +24,20 @@ void *task_prepare(void *args) {
     return 0;//一定一定一定要返回0！！！
 }
 
+void *task_stop(void *args) {
+    FFmpegPlayer *ffmpegPlayer = static_cast<FFmpegPlayer *>(args);
+    ffmpegPlayer->_prepare();
+
+    return 0;//一定一定一定要返回0！！！
+}
+
 void FFmpegPlayer::prepare() {
     pthread_create(&pid_prepare, 0, task_prepare, this);
 }
 
 void FFmpegPlayer::_prepare() {
+    LOGE("FFmpegPlayer::_prepare()");
+    LOGE("Open dataSource %s:", dataSource);
 
     formatContext = avformat_alloc_context();
 
@@ -40,7 +49,7 @@ void FFmpegPlayer::_prepare() {
     av_dict_free(&dictionary);
 
     if (ret != 0) {
-        LOGE("fail to open media : %s", av_err2str(ret));
+        LOGE("fail to open media :%s, %s",dataSource, av_err2str(ret));
 
         if (javaCallHelper) {
             javaCallHelper->onError(THREAD_CHILD, FFMPEG_CAN_NOT_OPEN_URL);
@@ -58,6 +67,8 @@ void FFmpegPlayer::_prepare() {
         }
         return;
     }
+
+    duration = formatContext->duration / AV_TIME_BASE;
 
     for (int i = 0; i < formatContext->nb_streams; i++) {
         AVStream *stream = formatContext->streams[i];
@@ -99,13 +110,15 @@ void FFmpegPlayer::_prepare() {
             }
         }
 
+        AVRational time_base = stream->time_base;
+
         if (codecParameters->codec_type == AVMEDIA_TYPE_AUDIO) {
-            audioChannel = new AudioChannel(i, codecContext);
+            audioChannel = new AudioChannel(i, codecContext, time_base, javaCallHelper);
         } else if (codecParameters->codec_type == AVMEDIA_TYPE_VIDEO) {
             AVRational frame_rate = stream->avg_frame_rate;
             int fps = av_q2d(frame_rate);
 
-            videoChannel = new VideoChannel(i, codecContext, fps);
+            videoChannel = new VideoChannel(i, codecContext, fps, time_base, javaCallHelper);
             videoChannel->setRenderCallback(renderCallback);
         }
     }
@@ -133,6 +146,9 @@ void *task_start(void *args) {
 void FFmpegPlayer::start() {
     isPlaying = 1;
     if (videoChannel) {
+        if (audioChannel) {
+            videoChannel->setAudioChannel(audioChannel);
+        }
         videoChannel->start();
     }
 
@@ -144,6 +160,7 @@ void FFmpegPlayer::start() {
 }
 
 void FFmpegPlayer::_start() {
+    LOGE("FFmpegPlayer::_start()");
     int ret;
     while (isPlaying) {
         if (videoChannel && videoChannel->packets.size() > 100) {
@@ -158,8 +175,7 @@ void FFmpegPlayer::_start() {
             if (videoChannel && packet->stream_index == videoChannel->id) {
                 videoChannel->packets.push(packet);
             } else if (audioChannel && packet->stream_index == audioChannel->id) {
-              //  audioChannel->packets.push(packet);
-              av_packet_free(&packet);
+                audioChannel->packets.push(packet);
             }
         } else if (ret == AVERROR_EOF) {
 
@@ -181,4 +197,34 @@ void FFmpegPlayer::_start() {
 
 void FFmpegPlayer::setRenderCallback(RenderCallback renderCallback) {
     this->renderCallback = renderCallback;
+}
+
+/**
+ * 停止播放
+ */
+void FFmpegPlayer::stop() {
+//    isPlaying = 0;
+    javaCallHelper = 0;//prepare阻塞中停止了，还是会回调给java "准备好了"
+
+    //既然在主线程会引发ANR，那么我们到子线程中去释放
+    pthread_create(&pid_stop, 0, task_stop, this);//创建stop子线程
+}
+
+void FFmpegPlayer::_stop() {
+    isPlaying = 0;
+    pthread_join(pid_prepare, 0);//解决了：要保证_prepare方法（子线程中）执行完再释放（在主线程）的问题
+//    //2 dataSource
+//    ffmpeg->_prepare();
+
+    if (formatContext) {
+        avformat_close_input(&formatContext);
+        avformat_free_context(formatContext);
+        formatContext = 0;
+    }
+    DELETE(videoChannel);
+    DELETE(audioChannel);
+}
+
+int FFmpegPlayer::getDuration() const {
+    return duration;
 }

@@ -3,9 +3,45 @@
 //
 
 #include "VideoChannel.h"
+#include "macro.h"
 
-VideoChannel::VideoChannel(int id, AVCodecContext *codecContext, int fps) : BaseChannel(id, codecContext){
+/**
+ * 丢包（AVPacket）
+ * @param q
+ */
+void dropAVPacket(queue<AVPacket *> &q) {
+    while (!q.empty()) {
+        AVPacket *avPacket = q.front();
+        // I 帧、B 帧、 P 帧
+        //不能丢 I 帧,AV_PKT_FLAG_KEY: I帧（关键帧）
+        if (avPacket->flags != AV_PKT_FLAG_KEY) {
+            //丢弃非 I 帧
+            BaseChannel::releaseAVPacket(&avPacket);
+            q.pop();
+        } else {
+            break;
+        }
+    }
+}
+
+/**
+ * 丢包（AVFrame）
+ * @param q
+ */
+void dropAVFrame(queue<AVFrame *> &q) {
+    if (!q.empty()) {
+        AVFrame *avFrame = q.front();
+        BaseChannel::releaseAVFrame(&avFrame);
+        q.pop();
+    }
+}
+
+VideoChannel::VideoChannel(int id, AVCodecContext *codecContext, int fps,
+        AVRational time_base, JavaCallHelper *javaCallHelper )
+        : BaseChannel(id, codecContext, time_base, javaCallHelper){
     this->fps = fps;
+    packets.setSyncHandle(dropAVPacket);
+    frames.setSyncHandle(dropAVFrame);
 }
 
 VideoChannel::~VideoChannel() {
@@ -26,6 +62,7 @@ void *task_video_play(void *args) {
     return 0; //???
 }
 
+
 void VideoChannel::start() {
     isPlaying = 1;
 
@@ -39,7 +76,12 @@ void VideoChannel::start() {
 }
 
 void VideoChannel::stop() {
-
+    isPlaying = 0;
+    javaCallHelper = 0;
+    packets.setWork(0);
+    frames.setWork(0);
+    pthread_join(pid_video_decode, 0);
+    pthread_join(pid_video_play, 0);
 }
 
 void VideoChannel::video_decode() {
@@ -103,6 +145,12 @@ void VideoChannel::video_play() {
 
     double delay_time_per_frame = 1.0 / fps;
 
+    double extra_delay;
+    double real_delay;
+    double audio_time;
+    double video_time;
+    double time_diff;
+
     int ret;
     while (isPlaying) {
         ret = frames.pop(frame);
@@ -118,10 +166,42 @@ void VideoChannel::video_play() {
         sws_scale(sws_ctx, frame->data, frame->linesize, 0, codecContext->height, dst_data, dst_linesize);
 
         //extra_delay = repeat_pict / (2*fps)
-        double extra_delay = frame->repeat_pict / (2 * fps);
-        double real_delay = delay_time_per_frame + extra_delay;
+        extra_delay = frame->repeat_pict / (2 * fps);
+        real_delay = delay_time_per_frame + extra_delay;
         //单位是：微秒
-        av_usleep(real_delay * 1000000);
+        video_time = frame->best_effort_timestamp * av_q2d(time_base);
+        LOGE("vidoe time: %lf", video_time );
+
+        if (!audioChannel) {
+            av_usleep(real_delay * 1000000);
+
+            if (javaCallHelper) {
+                javaCallHelper->onProgress(THREAD_CHILD, video_time);
+            }
+        } else {
+            audio_time = audioChannel->audio_time;
+            time_diff = video_time - audio_time;
+            if (time_diff > 0) {
+           //     LOGE("视频比音频快：%lf", time_diff);
+
+                if (time_diff > 1) {
+                    av_usleep((real_delay * 2) * 1000000);
+                } else {
+                    av_usleep((real_delay + time_diff) * 1000000);
+                }
+            } else if (time_diff < 0) {
+            //    LOGE("音频比视频快: %lf", fabs(time_diff));
+                //音频比视频快：追音频（尝试丢视频包）
+                //视频包：packets 和 frames
+                if (fabs(time_diff) >= 0.05) {
+                    //时间差如果大于0.05，有明显的延迟感
+                    //丢包：要操作队列中数据！一定要小心！
+//                    packets.sync();
+                    frames.sync();
+                    continue;
+                }
+            }
+        }
 
         renderCallback(dst_data[0], dst_linesize[0], codecContext->width, codecContext->height);
 
@@ -138,5 +218,9 @@ void VideoChannel::video_play() {
 
 void VideoChannel::setRenderCallback(RenderCallback callback) {
     this->renderCallback = callback;
+}
+
+void VideoChannel::setAudioChannel(AudioChannel *audioChannel) {
+    this->audioChannel = audioChannel;
 }
 
