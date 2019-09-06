@@ -11,6 +11,7 @@
 #include "VideoChannel.h"
 #include "macro.h"
 #include <pthread.h>
+#include "net/PlayClockTime.h"
 
 extern "C" {
 #include <libavformat/avformat.h>
@@ -37,6 +38,8 @@ public:
 
     int getDuration() const;
 
+    void useClockTime(PlayClockTime *clockTime);
+
 private:
     JavaCallHelper *javaCallHelper = 0;  // 回调java
 
@@ -58,6 +61,8 @@ private:
     RenderCallback renderCallback;
 
     int duration;
+
+    PlayClockTime *clockTime;
 };
 
 #endif //NATIVEPLAYER_FFMPEGPLAYER_H

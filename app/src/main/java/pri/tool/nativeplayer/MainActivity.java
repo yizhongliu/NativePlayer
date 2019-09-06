@@ -101,6 +101,7 @@ public class MainActivity extends AppCompatActivity implements SeekBar.OnSeekBar
                         seekBar.setMax(player.getDuration());
                     }
                 });
+                player.usePlayClockTime();
                 player.start();
             }
         });
@@ -140,8 +141,8 @@ public class MainActivity extends AppCompatActivity implements SeekBar.OnSeekBar
             }
         });
 
-        ipText = (TextView) this.findViewById(R.id.ipText);
-        ipEdit = (EditText) this.findViewById(R.id.ipEdit);
+        ipText = this.findViewById(R.id.ipText);
+        ipEdit = this.findViewById(R.id.ipEdit);
 
         timeProviderButton = findViewById(R.id.timeProvider);
         timeProviderButton.setOnClickListener(new View.OnClickListener() {

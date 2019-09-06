@@ -17,8 +17,8 @@ typedef struct _NetTimePacket NetTimePacket;
  * Content of a #GstNetTimePacket.
  */
 struct _NetTimePacket {
-    unsigned long long  local_time;
-    unsigned long long  remote_time;
+    int64_t  local_time;
+    int64_t  remote_time;
 };
 
 

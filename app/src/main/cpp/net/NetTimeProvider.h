@@ -18,8 +18,6 @@ public:
     void _start();
     void stop();
 
-    void your_jni_function();
-
 private:
     char * ip;
     int port;

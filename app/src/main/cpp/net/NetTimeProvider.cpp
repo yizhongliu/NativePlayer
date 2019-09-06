@@ -18,35 +18,6 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "NetTimeProvider",__VA_ARGS__)
 
 
-void NetTimeProvider::your_jni_function() {  //这个是你的测试jni函数
-    int Recv_Sockfd;
-    struct sockaddr_in ser_addr;
-    struct sockaddr_in recv_addr;
-
-    socklen_t  addrlen = sizeof(recv_addr);
-    int len_read_net;
-    unsigned char buffer[1024];
-    int res;
-
-    Recv_Sockfd=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
-    if(Recv_Sockfd <0 ){
-        LOGE(" open  socket fail!!!");
-        return ;
-    }
-    ser_addr.sin_family=AF_INET;
-    ser_addr.sin_addr.s_addr=htonl(INADDR_ANY);
-    ser_addr.sin_port=htons(8090);
-    res = bind(Recv_Sockfd,(struct sockaddr*)&ser_addr,sizeof(struct sockaddr_in));
-    LOGE("bind res[%u] , sin_port[%u]", res, ser_addr.sin_port);
-
-    len_read_net = recvfrom(Recv_Sockfd, buffer, 1024, 0, (struct sockaddr*)&recv_addr, &addrlen);
-//可以再这里加打印看看接收的数据
-    LOGE("receive socket %d", len_read_net);
-
-}
-
-
-
 NetTimeProvider::NetTimeProvider(char *ip, int port) {
     this->ip = new char[strlen(ip) + 1];
     strcpy(this->ip, ip);

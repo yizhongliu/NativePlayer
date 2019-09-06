@@ -14,6 +14,7 @@ extern "C" {
 
 #include "safe_queue.h"
 #include "JavaCallHelper.h"
+#include "net/PlayClockTime.h"
 
 class BaseChannel {
 public:
@@ -49,6 +50,8 @@ public:
 
     virtual void stop() = 0;
 
+    void setClockTime(PlayClockTime *clockTime);
+
     //对应的音频流或视频流index
     int id;
 
@@ -61,6 +64,8 @@ public:
 
     bool isPlaying = false;
     JavaCallHelper *javaCallHelper = 0;
+
+    PlayClockTime * clockTime = 0;
 };
 
 

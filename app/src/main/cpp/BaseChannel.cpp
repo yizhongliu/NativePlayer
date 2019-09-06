@@ -12,6 +12,10 @@ BaseChannel::BaseChannel(int id, AVCodecContext *codecContext, AVRational time_b
     frames.setReleaseCallback(releaseAVFrame);
 }
 
+void BaseChannel::setClockTime(PlayClockTime *clockTime) {
+    this->clockTime = clockTime;
+}
+
 
 
 

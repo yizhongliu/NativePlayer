@@ -167,6 +167,15 @@ native_stop_net_time_client (JNIEnv *env,
     }
 }
 
+extern "C" JNIEXPORT void JNICALL
+native_use_play_clock_time (JNIEnv *env,
+                             jobject /* this */) {
+    if (ffmpeg) {
+        PlayClockTime *playClockTime = new PlayClockTime();
+        ffmpeg->useClockTime(playClockTime);
+    }
+}
+
 /* List of implemented native methods */
 static JNINativeMethod native_methods[] = {
         {"nativePrepare", "(Ljava/lang/String;)V", (void *) native_prepare},
@@ -178,7 +187,8 @@ static JNINativeMethod native_methods[] = {
         {"nativeStartNetTimeProvider", "(Ljava/lang/String;I)V", (void *) native_start_net_time_provider},
         {"nativeStopNetTimeProvider", "()V", (void *) native_stop_net_time_provider},
         {"nativeStartNetTimeClient", "(Ljava/lang/String;I)V", (void *) native_start_net_time_client},
-        {"nativeStopNetTimeClient", "()V", (void *) native_stop_net_time_client}
+        {"nativeStopNetTimeClient", "()V", (void *) native_stop_net_time_client},
+        {"nativeUsePlayClockTime", "()V", (void *) native_use_play_clock_time}
 };
 
 

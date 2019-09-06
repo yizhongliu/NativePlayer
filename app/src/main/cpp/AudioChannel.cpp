@@ -259,6 +259,9 @@ int AudioChannel::getPCM() {
     int pcm_data_size = 0;
     AVFrame *frame = 0;
 
+    int64_t running_time;
+    int64_t clock_time_diff;
+
     while (isPlaying) {
         int ret = frames.pop(frame);
         if (!isPlaying) {
@@ -299,6 +302,31 @@ int AudioChannel::getPCM() {
 
         //获取音频时间 audio_time需要被VideoChannel获取
         audio_time = frame->best_effort_timestamp * av_q2d(time_base);
+        LOGE("audio_time &lf", audio_time);
+
+        if (clockTime) {
+            if (frame->best_effort_timestamp == 0) {
+                int64_t basetime = clockTime->getClockTime();
+                clockTime->setClockBasetime(basetime);
+            } else {
+                running_time = clockTime->getClockTime() - clockTime->getClockBasetime();
+                clock_time_diff = (int64_t) (audio_time * 1000000) - running_time;
+
+                LOGE("clock_time_diff: %ld", clock_time_diff);
+                if (clock_time_diff > 0) {
+                    if (clock_time_diff > 1000000) {
+                        av_usleep((delay * 2) * 1000000);
+                    } else {
+                        av_usleep(((delay * 1000000) + clock_time_diff));
+                    }
+                } else if (clock_time_diff < 0) {
+                    if (abs(clock_time_diff) >= 50000) {
+                        frames.sync();
+                        continue;
+                    }
+                }
+            }
+        }
         if (javaCallHelper) {
             javaCallHelper->onProgress(THREAD_CHILD, audio_time);
         }

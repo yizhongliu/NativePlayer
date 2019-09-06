@@ -148,6 +148,10 @@ public class NativePlayer implements SurfaceHolder.Callback {
         nativeStopNetTimeClient();
     }
 
+    public void usePlayClockTime() {
+        nativeUsePlayClockTime();
+    }
+
 
     private native void nativePrepare(String dataSource);
 
@@ -165,5 +169,6 @@ public class NativePlayer implements SurfaceHolder.Callback {
     private native void nativeStopNetTimeProvider();
     private native void nativeStartNetTimeClient(String ip, int port);
     private native void nativeStopNetTimeClient();
+    private native void nativeUsePlayClockTime();
 
 }

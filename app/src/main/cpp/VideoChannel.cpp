@@ -151,6 +151,9 @@ void VideoChannel::video_play() {
     double video_time;
     double time_diff;
 
+    int64_t running_time;
+    int64_t clock_time_diff;
+
     int ret;
     while (isPlaying) {
         ret = frames.pop(frame);
@@ -170,9 +173,32 @@ void VideoChannel::video_play() {
         real_delay = delay_time_per_frame + extra_delay;
         //单位是：微秒
         video_time = frame->best_effort_timestamp * av_q2d(time_base);
-        LOGE("vidoe time: %lf", video_time );
+        LOGE("vidoe time: %lf, %ld", video_time,  frame->best_effort_timestamp);
+        LOGE("av_gettime(): %ld" , av_gettime());
 
-        if (!audioChannel) {
+        if (clockTime) {
+            if (frame->best_effort_timestamp == 0) {
+                int64_t basetime = clockTime->getClockTime();
+                clockTime->setClockBasetime(basetime);
+            } else {
+                running_time = clockTime->getClockTime() - clockTime->getClockBasetime();
+                clock_time_diff = (int64_t)(video_time * 1000000) - running_time;
+
+                LOGE("clock_time_diff: %ld" , clock_time_diff);
+                if (clock_time_diff > 0) {
+                    if (clock_time_diff > 1000000) {
+                        av_usleep((real_delay * 2) * 1000000);
+                    } else {
+                        av_usleep(((real_delay * 1000000) + clock_time_diff));
+                    }
+                } else if (clock_time_diff < 0) {
+                    if (abs(clock_time_diff) >= 50000) {
+                        frames.sync();
+                        continue;
+                    }
+                }
+            }
+        } else if (!audioChannel) {
             av_usleep(real_delay * 1000000);
 
             if (javaCallHelper) {

@@ -15,6 +15,8 @@ FFmpegPlayer::FFmpegPlayer(JavaCallHelper *javaCallHelper, char *dataSource) {
 FFmpegPlayer::~FFmpegPlayer() {
     DELETE(javaCallHelper);
     DELETE(dataSource);
+
+    DELETE(clockTime);
 }
 
 void *task_prepare(void *args) {
@@ -227,4 +229,16 @@ void FFmpegPlayer::_stop() {
 
 int FFmpegPlayer::getDuration() const {
     return duration;
+}
+
+void FFmpegPlayer::useClockTime(PlayClockTime *clockTime) {
+    this->clockTime = clockTime;
+    if (videoChannel) {
+        videoChannel->setClockTime(clockTime);
+    }
+
+    if (audioChannel) {
+        audioChannel->setClockTime(clockTime);
+    }
+
 }
