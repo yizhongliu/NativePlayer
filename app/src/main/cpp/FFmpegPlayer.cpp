@@ -28,7 +28,7 @@ void *task_prepare(void *args) {
 
 void *task_stop(void *args) {
     FFmpegPlayer *ffmpegPlayer = static_cast<FFmpegPlayer *>(args);
-    ffmpegPlayer->_prepare();
+    ffmpegPlayer->_stop();
 
     return 0;//一定一定一定要返回0！！！
 }

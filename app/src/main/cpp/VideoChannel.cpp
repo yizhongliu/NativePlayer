@@ -238,7 +238,7 @@ void VideoChannel::video_play() {
 
     isPlaying = 0;
 
-    av_free(&dst_data[0]);
+    av_free(dst_data[0]);
     sws_freeContext(sws_ctx);
 }
 
